@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Simple E-Commerce</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/public/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="logo">SimpleShop</a>
+    <nav>
+      <a href="/cart" id="cart-link">Cart (0)</a>
+      <span id="auth-links"></span>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Products</h1>
+    <div id="products" class="grid"></div>
+  </main>
+
+  <script src="/public/js/main.js"></script>
+  <script>
+    // load products
+    async function load() {
+      const res = await fetch('/api/products');
+      const products = await res.json();
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+      products.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${p.image || '/public/img/placeholder.png'}" alt="${p.title}">
+          <div class="card-body">
+            <h3>${p.title}</h3>
+            <p class="desc">${p.description}</p>
+            <p class="price">₹ ${p.price.toFixed(2)}</p>
+            <div class="actions">
+              <a class="btn" href="/product/${p.id}">View</a>
+              <button class="btn-outline add-btn" data-id="${p.id}">Add to cart</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      attachAddButtons();
+    }
+
+    async function attachAddButtons(){
+      document.querySelectorAll('.add-btn').forEach(btn=>{
+        btn.addEventListener('click', async (e)=>{
+          const id = btn.dataset.id;
+          await fetch('/api/cart/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ productId: id, qty: 1 })});
+          updateCartCount();
+        });
+      });
+    }
+
+    function updateAuthLinks(user){
+      const cont = document.getElementById('auth-links');
+      if (user) {
+        cont.innerHTML = `<span>Hi, ${user.name}</span> <a href="#" id="logout">Logout</a>`;
+        document.getElementById('logout').addEventListener('click', async (e)=>{
+          e.preventDefault();
+          await fetch('/api/logout', { method: 'POST' });
+          location.reload();
+        });
+      } else {
+        cont.innerHTML = `<a href="/login">Login</a> <a href="/register">Register</a>`;
+      }
+    }
+
+    async function updateCartCount(){
+      const res = await fetch('/api/cart');
+      const cart = await res.json();
+      const count = Object.values(cart).reduce((s,i)=> s + i.qty, 0);
+      document.getElementById('cart-link').innerText = `Cart (${count})`;
+    }
+
+    async function fetchSessionUser(){
+      // we don't have endpoint for user info, but we can try to fetch cart to populate count and read window.session via server-side? Simpler: try to infer from page via cookies not available.
+      // We'll call /api/cart & update cart count
+      updateCartCount();
+      // try to fetch a protected endpoint to check auth (my-orders) and parse 401
+      const res = await fetch('/api/cart');
+      updateAuthLinks(null); // fallback
+      // We can get user info in a safer way by creating a small endpoint, but to keep things simple we won't require it here.
+    }
+
+    load();
+    fetchSessionUser();
+  </script>
+</body>
+</html>

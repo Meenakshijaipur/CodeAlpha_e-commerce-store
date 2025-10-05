@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Product — SimpleShop</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/public/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="logo">SimpleShop</a>
+    <nav>
+      <a href="/cart" id="cart-link">Cart (0)</a>
+      <span id="auth-links"></span>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div id="product" class="product-detail"></div>
+  </main>
+
+  <script src="/public/js/main.js"></script>
+  <script>
+    const id = location.pathname.split('/').pop();
+    async function loadProduct(){
+      const res = await fetch('/api/products/' + id);
+      if (!res.ok) {
+        document.getElementById('product').innerText = 'Product not found';
+        return;
+      }
+      const p = await res.json();
+      document.getElementById('product').innerHTML = `
+        <div class="prod-left">
+          <img src="${p.image}" alt="${p.title}">
+        </div>
+        <div class="prod-right">
+          <h2>${p.title}</h2>
+          <p class="desc">${p.description}</p>
+          <p class="price">₹ ${p.price.toFixed(2)}</p>
+          <div>
+            <label>Quantity: <input id="qty" type="number" value="1" min="1" style="width:60px"></label>
+            <button id="addCart" class="btn">Add to cart</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('addCart').addEventListener('click', async () => {
+        const qty = parseInt(document.getElementById('qty').value || 1);
+        await fetch('/api/cart/add', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ productId: p.id, qty })
+        });
+        alert('Added to cart');
+        updateCartCount();
+      });
+    }
+
+    loadProduct();
+    updateCartCount();
+  </script>
+</body>
+</html>
